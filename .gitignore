@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+screens/
+test-local.py
+ssl.key
+ssl.crt
