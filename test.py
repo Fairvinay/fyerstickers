@@ -17,11 +17,11 @@ from ServerThreadSelfManage import ServerThreadSelfManage
 
 
 # === Configuration ===S
-#client_id = os.environ.get("client_id", "V8BNUWJ4WQ-100")
-client_id = os.environ.get("client_id", "TRLV2A6GPL-100")
+client_id = os.environ.get("client_id", "V8BNUWJ4WQ-100")
+#client_id = os.environ.get("client_id", "TRLV2A6GPL-100")
 # "TRLV2A6GPL-100"
-#secret_key = os.environ.get("secret_key", "KOA61TZLP4")
-secret_key = os.environ.get("secret_key", "V72MPISUJC")
+secret_key = os.environ.get("secret_key", "KOA61TZLP4")
+#secret_key = os.environ.get("secret_key", "V72MPISUJC")
 # "V72MPISUJC"
 #redirec_base_url = os.environ.get("redirec_base_url", "https://192.168.1.3:8888")
 redirec_base_url = os.environ.get("redirec_base_url", "https://successrate.netlify.app")
