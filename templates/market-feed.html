@@ -1,0 +1,156 @@
+ <!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="UTF-8">
+   <title>Stream with Fyers</title>
+    <style>
+      body {
+       font-family: sans-serif;
+       text-align: center;
+       margin-top: 100px;
+      }
+      .ticker-span {
+         background-color:#346ccf; color:#eaf1de; border-radius: 6px;font-size: 28px;
+         border-color: #1f8ef1;
+         border-style:groove;
+         margin-bottom: 43px;
+      }
+      .login-btn {
+        padding: 12px 24px;
+        font-size: 18px;
+        background-color: #1f8ef1;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 5px;
+      }
+      .login-btn:hover {
+        background-color: #0d6efd;
+      }
+    </style>
+ </head>
+  <body>
+   <div id="messages"></div>
+    <script>
+       const accessToken = "{{ secret_value }}";
+       console.log("Server variable:", accessToken);
+       /*  document.getElementById('startSSE').addEventListener('click', function (event) {
+            //event.preventDefault(); // stop POST
+             const es = new EventSource(`https://localhost:9384/stream?accessToken=${accessToken}`);
+            es.onmessage = function(e) {
+                   console.log("SSE:", e.data);
+                };
+       });
+
+       function post() {
+event.preventDefault();
+        const eventSource = new EventSource(`/stream?accessToken=${accessToken}`);
+        eventSource.onmessage = function(event) {
+           const msgDiv = document.getElementById("messages");
+           msgDiv.innerHTML += "<p>" + event.data + "</p>";
+        };
+       }*/
+
+    </script>
+
+    <form  method="POST">
+             <span id="sse" class="ticker-span">   </span> <span id="sseIDX" class="ticker-span">   </span>
+              <span id="sseLTP" class="ticker-span">   </span>
+              <br/>
+             <span id="sse1" class="ticker-span">  </span> <span id="sse1IDX" class="ticker-span">   </span>
+              <span id="sse1LTP" class="ticker-span">   </span>
+                   <br/>
+                  <span id="sse2" class="ticker-span"> </span>   <span id="sse2IDX" class="ticker-span">   </span>
+              <span id="sse2LTP" class="ticker-span">   </span><br/>
+                        <span id="sse3" class="ticker-span"> </span> <span id="sse3IDX" class="ticker-span">   </span>
+              <span id="sse3LTP" class="ticker-span">   </span>
+
+    </form>
+     <button class="login-btn"  type="button" id="startSSE" >Stream with Fyers</button>
+<button class="login-btn"  type="button" id="stopSSE" >STOP</button>
+      <script>
+         let es = null; // store reference
+         let tickers = [ "BSE:SENSEX-INDEX",
+              "NSE:NIFTY50-INDEX",
+              "NSE:NIFTYBANK-INDEX", "BSE:SENSEX2591881400CE", "NSE:NIFTY25SEP25100CE"    ];
+         document.getElementById('startSSE').addEventListener('click', function (event) {
+            //event.preventDefault(); // stop POST
+             if(es) {
+      console.log("SSE alredy running ");
+                return;
+              }
+              const params = new URLSearchParams({
+                    //authcode:  localStorage.getItem(tokenKey),
+                    // interval: '1m',
+                    // limit: '100', ?accessToken=
+
+                    });
+              if(tickers !==undefined && tickers !== null && Array.isArray(tickers)){
+                      tickers.forEach(ticker => params.append("tickers", ticker));
+                 }
+
+
+               #es = new EventSource(`https://localhost:9384/stream?accessToken=${accessToken}&${params.toString()}`);
+               es = new EventSource(`https://fyerstickers.onrender.com/stream?accessToken=${accessToken}&${params.toString()}`);
+               es.onmessage = function(e) {
+                   console.log("SSE:", e.data);
+                   let data = e.data;
+                     let parsed;
+                    try {
+                        parsed = JSON.parse(e.data);
+                    } catch(err) {
+                        console.error("Invalid JSON:", e.data);
+                        return;
+                    }
+
+                    // Extract the symbol
+                    let symbol = parsed.symbol;
+                    console.log("Symbol:", symbol);
+
+
+                   switch(symbol){
+                       case 'BSE:SENSEX-INDEX':
+                                      document.getElementById('sse1').textContent ='BSE:SENSEX-INDEX'
+                                        document.getElementById('sse1IDX').textContent =parsed.ltp
+                                    break;
+                       case 'NSE:NIFTY50-INDEX':   document.getElementById('sse2').textContent ='NSE:NIFTY50-INDEX'
+                            document.getElementById('sse2IDX').textContent =parsed.ltp
+                                break;
+                       case 'NSE:NIFTY25SEP25100CE' :   document.getElementById('sse').textContent ='NSE:NIFTY25SEP25100CE'
+                            document.getElementById('sseIDX').textContent =parsed.ltp
+                                 break;
+                       case 'BSE:SENSEX2591881400CE' :   document.getElementById('sse3').textContent ='BSE:SENSEX2591881400CE'
+                            document.getElementById('sse3IDX').textContent =parsed.ltp
+                                 break;
+                   }
+                 //  data[0].symbol
+                   // document.getElementById('sse').textContent = e.data;
+                };
+               es.onopen = function() {
+                   console.log("SSE: connection open " );
+                   // document.getElementById('sse').textContent = e.data;
+                };
+               es.onerror = function(e) {
+                   console.error("SSE:  error " );
+                   // document.getElementById('sse').textContent = e.data;
+                };
+
+
+         });
+         document.getElementById('stopSSE').addEventListener('click', function (event) {
+             if (es) {
+               es.close();
+               es = null;
+                console.log("SSE connection stopped");
+             } else {
+               console.log("No SSE connection to stop");
+             }
+
+         });
+
+       </script>
+
+
+  </body>
+</html>
