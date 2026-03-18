@@ -14,6 +14,15 @@ import asyncio
 import random   # <-- add this
 from ServerThread import ServerThread
 from ServerThreadSelfManage import ServerThreadSelfManage
+import aiohttp
+import asyncio
+
+import ssl
+
+# 🔥 create unsafe SSL context (for local/dev only)
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 
 
 # === Configuration ===S
@@ -27,6 +36,19 @@ secret_key = os.environ.get("secret_key", "KOA61TZLP4")
 redirec_base_url = os.environ.get("redirec_base_url", "https://successrate.netlify.app")
 #redirect_uri = "https://192.168.1.4:8888/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
 redirect_uri = redirec_base_url.rstrip("/") +"/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
+# ===== CONFIG =====
+API_URL = "https://successrate.netlify.app/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
+#API_URL = "https://192.168.1.3:8888/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
+ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
+API_KEY = "CKFRQC4GPZQUB56W"
+
+SYMBOL_MAP = {
+    "BSE:SENSEX-INDEX": "SENSEX-INDEX",
+    "NSE:NIFTY50-INDEX": "NIFTY50-INDEX",
+    "NSE:NIFTYBANK-INDEX": "NIFTYBANK-INDEX",
+}
+
+
 response_type = "code"
 grant_type = "authorization_code"
 state = "python_test"
@@ -83,6 +105,67 @@ class CustomError(Exception):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
+
+
+# ===== FETCH FUNCTION =====
+async def fetch_spot(session, symbol):
+    global global_access_token  # ✅ IMPORTANT
+
+    try:
+        params = {
+            "access_token": global_access_token,  # ✅ USE GLOBAL
+            "symbol": symbol,
+            "apikey": API_KEY,
+        }
+
+        async with session.get(API_URL, params=params, ssl=False) as res:
+            # ✅ handle non-JSON safely
+            if res.status != 200:
+                text = await res.text()
+                print(f"❌ API Error ({symbol}):", text[:200])
+                return None
+
+            try:
+                data = await res.json()
+            except Exception:
+                text = await res.text()
+                print(f"❌ Not JSON ({symbol}):", text[:200])
+                return None
+
+            ltp = data.get("ltp") or data.get("d", [{}])[0].get("v", {}).get("lp")
+
+            if ltp:
+                return float(ltp)
+
+    except Exception as e:
+        print(f"❌ Failed to fetch {symbol}: {e}")
+
+    return None
+
+
+async def initialize_prices_async():
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            fetch_spot(session, "SENSEX-INDEX"),
+            fetch_spot(session, "NIFTY50-INDEX"),
+            fetch_spot(session, "NIFTYBANK-INDEX"),
+        ]
+
+        results = await asyncio.gather(*tasks)
+
+        return {
+            "BSE:SENSEX-INDEX": results[0] or 75000,
+            "NSE:NIFTY50-INDEX": results[1] or 22500,
+            "NSE:NIFTYBANK-INDEX": results[2] or 48000,
+        }
+
+
+# ===== INITIALIZE SPOT VALUES =====
+def initialize_prices():
+    import asyncio
+
+    return asyncio.run(initialize_prices_async())
+
 
 async def main_socket():
     # This is where you would do your main program logic
@@ -310,6 +393,37 @@ def stream():
     access_token = request.args.get("accessToken")
     print("Received access_token...")
     global_access_token = access_token
+
+    ACCESS_TOKEN = access_token
+    # 🔥 STEP 1: Initialize real SPOT values
+    prices = initialize_prices()
+
+    print("✅ Initial SPOT prices:", prices)
+
+    # 🔥 STEP 2: Create ranges dynamically
+    ranges = {
+        "BSE:SENSEX-INDEX": (
+            prices["BSE:SENSEX-INDEX"] - 3,
+            prices["BSE:SENSEX-INDEX"] + 3,
+        ),
+        "NSE:NIFTY50-INDEX": (
+            prices["NSE:NIFTY50-INDEX"] - 1.5,
+            prices["NSE:NIFTY50-INDEX"] + 1.5,
+        ),
+        "NSE:NIFTYBANK-INDEX": (
+            prices["NSE:NIFTYBANK-INDEX"] - 1.2,
+            prices["NSE:NIFTYBANK-INDEX"] + 1.2,
+        ),
+    }
+
+    movement = {
+        "BSE:SENSEX-INDEX": (3.5, 8.5),
+        "NSE:NIFTY50-INDEX": (1.5, 2.9),
+        "NSE:NIFTYBANK-INDEX": (2.0, 3.9),
+    }
+
+    symbols = list(prices.keys())
+
     # Option 1: If repeated params
     tickers = request.args.getlist("tickers")
     tickers_global = tickers
@@ -324,13 +438,37 @@ def stream():
         try:
             while True:
                 try:
-                   msg = ServerThreadSelfManage.message_queue.get(timeout=1)
-                   if msg is None:
-                      yield "data: heartbeat\n\n"
-                   else:
-                      yield msg
-                except:
-                   yield "data: heartbeat\n\n"
+                    # 🔥 STEP 3: Try real queue data first
+                    msg = ServerThreadSelfManage.message_queue.get(timeout=45)
+
+                    if msg:
+                        yield f"data: {json.dumps(msg)}\n\n"
+                    else:
+                        yield "data: heartbeat\n\n"
+
+                except queue.Empty:
+                    # 🔥 STEP 4: Simulated fallback
+
+                    symbol = random.choice(symbols)
+
+                    min_range, max_range = ranges[symbol]
+                    min_move, max_move = movement[symbol]
+
+                    direction = random.choice([-1, 1])
+                    step = random.uniform(min_move, max_move)
+
+                    prices[symbol] += direction + step
+
+                    # Clamp
+                    prices[symbol] = max(min_range, min(max_range, prices[symbol]))
+
+                    simulated_msg = {
+                        "ltp": round(prices[symbol], 2),
+                        "symbol": symbol,
+                        "type": "if",
+                    }
+
+                    yield f"data: {json.dumps(simulated_msg)}\n\n"
         except GeneratorExit:
             # This happens when client disconnects
             print("⚠️ Client disconnected from /stream")
