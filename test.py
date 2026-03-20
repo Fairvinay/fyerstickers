@@ -1,6 +1,14 @@
 from fyers_apiv3.FyersWebsocket import data_ws
 from fyers_apiv3 import fyersModel as fyersV3
-from flask import Flask, request, redirect, render_template ,  Response, render_template_string , stream_with_context
+from flask import (
+    Flask,
+    request,
+    redirect,
+    render_template,
+    Response,
+    render_template_string,
+    stream_with_context,
+)
 from flask_cors import CORS
 from flask import jsonify
 from multiprocessing import Process
@@ -8,10 +16,10 @@ import requests
 import threading
 from threading import Thread
 import webbrowser
-import time , os , json
-import sys , queue
+import time, os, json
+import sys, queue
 import asyncio
-import random   # <-- add this
+import random  # <-- add this
 from ServerThread import ServerThread
 from ServerThreadSelfManage import ServerThreadSelfManage
 import aiohttp
@@ -26,19 +34,24 @@ ssl_context.verify_mode = ssl.CERT_NONE
 
 
 # === Configuration ===S
-client_id = os.environ.get("client_id", "P67RJAS1M6-100") #"V8BNUWJ4WQ-100"
-#client_id = os.environ.get("client_id", "TRLV2A6GPL-100")
+client_id = os.environ.get("client_id", "P67RJAS1M6-100")  # "V8BNUWJ4WQ-100"
+# client_id = os.environ.get("client_id", "TRLV2A6GPL-100")
 # "TRLV2A6GPL-100"
-secret_key = os.environ.get("secret_key", "4LXEKKMFUL" )#"KOA61TZLP4"
-#secret_key = os.environ.get("secret_key", "V72MPISUJC")
+secret_key = os.environ.get("secret_key", "4LXEKKMFUL")  # "KOA61TZLP4"
+# secret_key = os.environ.get("secret_key", "V72MPISUJC")
 # "V72MPISUJC"
-#redirec_base_url = os.environ.get("redirec_base_url", "https://192.168.1.3:8888")
-redirec_base_url = os.environ.get("redirec_base_url","https://fyersbook.netlify.app" ) #"https://successrate.netlify.app"
-#redirect_uri = "https://192.168.1.4:8888/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
-redirect_uri = redirec_base_url.rstrip("/") +"/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
+# redirec_base_url = os.environ.get("redirec_base_url", "https://192.168.1.3:8888")
+redirec_base_url = os.environ.get(
+    "redirec_base_url", "https://fyersbook.netlify.app"
+)  # "https://successrate.netlify.app"
+# redirect_uri = "https://192.168.1.4:8888/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
+redirect_uri = (
+    redirec_base_url.rstrip("/")
+    + "/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
+)
 # ===== CONFIG =====
 API_URL = "https://fyersbook.netlify.app/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
-#API_URL = "https://192.168.1.3:8888/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
+# API_URL = "https://192.168.1.3:8888/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
 ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
 API_KEY = "CKFRQC4GPZQUB56W"
 
@@ -60,10 +73,10 @@ flask_process = None  # Will store reference to the running Process
 message_queue = queue.Queue()
 outgoing = asyncio.Queue()
 
-tickers_global = ['NSE:NIFTY2631023150CE']
+tickers_global = ["NSE:NIFTY2631023150CE"]
 threadsocket = None
 # Create the server thread (not started yet)
-#server_thread = ServerThread()
+# server_thread = ServerThread()
 server_thread = None
 
 # Store the token globally after login
@@ -77,7 +90,9 @@ CORS(app, supports_credentials=True, resources={r"/stream*": {"origins": cors_ur
 
 # Read env variable and parse into list
 allowed_origins = os.environ.get("ALLOWED_ORIGINS", "")
-ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins.split(",") if origin.strip()]
+ALLOWED_ORIGINS = [
+    origin.strip() for origin in allowed_origins.split(",") if origin.strip()
+]
 
 if ALLOWED_ORIGINS:  # checks list is not empty
     print("Allowed origins found:", ALLOWED_ORIGINS)
@@ -87,18 +102,19 @@ else:
         "https://fyersbook.netlify.app",
         "https://onedinaar.com",
         "https://192.168.1.7:8888",
-         "https://192.168.1.3:8888",
-          "https://192.168.1.3:3000",
+        "https://192.168.1.3:8888",
+        "https://192.168.1.3:3000",
     ]
     print("Allowed origins configured from hard code")
 
-headers	 = {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": redirec_base_url.rstrip("/"),
-            "Access-Control-Allow-Credentials": "true"
-           }
+headers = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "Access-Control-Allow-Origin": redirec_base_url.rstrip("/"),
+    "Access-Control-Allow-Credentials": "true",
+}
+
 
 class CustomError(Exception):
     def __init__(self, message, status_code=400):
@@ -171,10 +187,12 @@ async def main_socket():
     # This is where you would do your main program logic
     while True:
         if not threadsocket.is_alive():
-                print('starting  asyncio server with fyers acess token ')
+            print("starting  asyncio server with fyers acess token ")
+
+
 async def run_server(acctoken, tickers):
     task = asyncio.create_task(main_socket())
-    server = await asyncio.start_server(handle_client, 'localhost', 15555)
+    server = await asyncio.start_server(handle_client, "localhost", 15555)
     async with server:
         try:
             await server.serve_forever()
@@ -183,25 +201,28 @@ async def run_server(acctoken, tickers):
             task.cancel()
             await task
 
+
 async def handle_client(reader, writer, acctoken, tickers):
-    asyncio.create_task(handle_outgoing(writer, acctoken,tickers))
+    asyncio.create_task(handle_outgoing(writer, acctoken, tickers))
 
-async def handle_outgoing(writer,access_token_input,tickers):
+
+async def handle_outgoing(writer, access_token_input, tickers):
     while True:
-         message = await outgoing.get()
-         packet = json.dumps(message) + '\r\n'
-         print("📡 Starting WebSocket with access_token...")
+        message = await outgoing.get()
+        packet = json.dumps(message) + "\r\n"
+        print("📡 Starting WebSocket with access_token...")
 
-         def onmessage(message):
-             """
-              Callback function to handle incoming messages from the FyersDataSocket WebSocket.
-              Parameters:
-              message (dict): The received message from the WebSocket.
-             """
-             # return Response(f"data: {json.dumps(message)}\n\n", mimetype="text/event-stream")
-             message_queue.put(f"data: {json.dumps(message)}\n\n")
-             print("Response:", message)
-         def onerror(message):
+        def onmessage(message):
+            """
+            Callback function to handle incoming messages from the FyersDataSocket WebSocket.
+            Parameters:
+            message (dict): The received message from the WebSocket.
+            """
+            # return Response(f"data: {json.dumps(message)}\n\n", mimetype="text/event-stream")
+            message_queue.put(f"data: {json.dumps(message)}\n\n")
+            print("Response:", message)
+
+        def onerror(message):
             """
             Callback function to handle WebSocket errors.
             Parameters:
@@ -211,7 +232,7 @@ async def handle_outgoing(writer,access_token_input,tickers):
             print("Error:", message)
             # return Response(f"data: {json.dumps(message)}\n\n", mimetype="text/event-stream")
 
-         def onclose(message):
+        def onclose(message):
             """
             Callback function to handle WebSocket connection close events.
             """
@@ -219,7 +240,7 @@ async def handle_outgoing(writer,access_token_input,tickers):
             print("Connection closed:", message)
             # return Response(f"data: {json.dumps(message)}\n\n", mimetype="text/event-stream")
 
-         def onopen():
+        def onopen():
             """
             Callback function to subscribe to data type and symbols upon WebSocket connection.
             """
@@ -230,14 +251,18 @@ async def handle_outgoing(writer,access_token_input,tickers):
             # symbols = ['NSE:NIFTY2590924900PE', 'NSE:NIFTY50-INDEX', 'NSE:NIFTY2590924900CE', 'NSE:NIFTY2590925000PE',
             #           'NSE:NIFTY2590925000CE']
             # Validate: must be a list, non-empty, and all elements non-empty strings
-            if isinstance(tickers, list) and len(tickers) > 0 and all(t.strip() for t in tickers):
+            if (
+                isinstance(tickers, list)
+                and len(tickers) > 0
+                and all(t.strip() for t in tickers)
+            ):
                 symbols = tickers
             else:
                 # Default fallback
                 symbols = [
                     "BSE:SENSEX-INDEX",
                     "NSE:NIFTY50-INDEX",
-                    "NSE:NIFTYBANK-INDEX"
+                    "NSE:NIFTYBANK-INDEX",
                 ]
             fyers.subscribe(symbols=symbols, data_type=data_type)
             ter = "connected"
@@ -247,8 +272,8 @@ async def handle_outgoing(writer,access_token_input,tickers):
             # Replace the sample access token with your actual access token obtained from Fyers
             access_token = access_token_input
 
-         # Create a FyersDataSocket instance with the provided parameters
-         fyers = data_ws.FyersDataSocket(
+        # Create a FyersDataSocket instance with the provided parameters
+        fyers = data_ws.FyersDataSocket(
             access_token=access_token_input,  # Access token in the format "appid:accesstoken"
             log_path="",  # Path to save logs. Leave empty to auto-create logs in the current directory.
             litemode=True,  # Lite mode disabled. Set to True if you want a lite response.
@@ -257,25 +282,28 @@ async def handle_outgoing(writer,access_token_input,tickers):
             on_connect=onopen,  # Callback function to subscribe to data upon connection.
             on_close=onclose,  # Callback function to handle WebSocket connection close events.
             on_error=onerror,  # Callback function to handle WebSocket errors.
-            on_message=onmessage  # Callback function to handle incoming messages from the WebSocket.
+            on_message=onmessage,  # Callback function to handle incoming messages from the WebSocket.
         )
 
-         # Keep the socket running to receive real-time data
-         fyers.keep_running()
+        # Keep the socket running to receive real-time data
+        fyers.keep_running()
 
-         # Establish a connection to the Fyers WebSocket
-         fyers.connect()
-         writer.write(packet.encode('utf-8'))
-         await writer.drain()
+        # Establish a connection to the Fyers WebSocket
+        fyers.connect()
+        writer.write(packet.encode("utf-8"))
+        await writer.drain()
+
 
 def start_asyncio_server(acctoken, tickers):
     acctoken = global_access_token
     tickers = tickers_global
     asyncio.run(run_server(acctoken, tickers))
 
-# Start background websocket thread
-threadsocket = threading.Thread(target=start_asyncio_server, args=(global_access_token, tickers_global))
 
+# Start background websocket thread
+threadsocket = threading.Thread(
+    target=start_asyncio_server, args=(global_access_token, tickers_global)
+)
 
 
 @app.errorhandler(CustomError)
@@ -283,6 +311,7 @@ def handle_custom_error(error):
     response = jsonify({"message": error.message})
     response.status_code = error.status_code
     return response
+
 
 @app.errorhandler(Exception)
 def handle_generic_exception(error):
@@ -292,13 +321,16 @@ def handle_generic_exception(error):
     response.status_code = 500
     return response
 
-@app.route('/')
+
+@app.route("/")
 def index():
     return render_template("index.html")
 
-@app.route('/raise_error')
+
+@app.route("/raise_error")
 def raise_error():
     raise CustomError("Something specific went wrong!", status_code=422)
+
 
 @app.route("/login")
 def login():
@@ -308,12 +340,12 @@ def login():
         secret_key=secret_key,
         redirect_uri=redirect_uri,
         response_type="code",
-        state=state
+        state=state,
     )
     auth_url = session.generate_authcode()
     # Store the token globally after login
     global_session = session
-    print("auth_url:",auth_url)
+    print("auth_url:", auth_url)
     return redirect(auth_url)
 
 
@@ -323,18 +355,21 @@ def add_cors_headers(response):
     if origin in ALLOWED_ORIGINS:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Vary"] = "Origin"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, PUT, DELETE, OPTIONS"
+        )
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
+
 # 3. Handle Fyers redirect + trigger WebSocket
-@app.route('/redirect')
+@app.route("/redirect")
 def callback():
     global global_access_token
-    auth_code = request.args.get('auth_code')
+    auth_code = request.args.get("auth_code")
     received_state = request.args.get("state")
-    #session = global_session if global_session is not None else None
+    # session = global_session if global_session is not None else None
 
     if not auth_code:
         return "❌ Authorization failed", 400
@@ -345,7 +380,7 @@ def callback():
             secret_key=secret_key,
             redirect_uri=redirect_uri,
             response_type="code",
-            grant_type="authorization_code"
+            grant_type="authorization_code",
         )
         session.set_token(auth_code)
         response = session.generate_token()
@@ -356,9 +391,7 @@ def callback():
             # with open("access_token.txt", "w") as f:
             #    f.write(access_token)
 
-            order_variables = {
-                "secret_value": global_access_token
-            }
+            order_variables = {"secret_value": global_access_token}
             # Pass dictionary by unpacking
             if received_state == "python_test":
                 return render_template("market-feed.html", **order_variables)
@@ -396,7 +429,12 @@ def stream():
 
     ACCESS_TOKEN = access_token
     # 🔥 STEP 1: Initialize real SPOT values
-    prices = initialize_prices()
+    # prices = initialize_prices()
+    prices = {
+        "BSE:SENSEX-INDEX": 74969.2,
+        "NSE:NIFTY50-INDEX": 23240.6,
+        "NSE:NIFTYBANK-INDEX": 54123.44,
+    }
 
     print("✅ Initial SPOT prices:", prices)
 
@@ -429,7 +467,7 @@ def stream():
     tickers_global = tickers
     print("Tickers:", tickers)
     print("Access Token:", access_token)
-    #if not threadsocket.is_alive():
+    # if not threadsocket.is_alive():
     # threadsocket.start()
     ServerThreadSelfManage.start_once(access_token, tickers)
 
@@ -475,13 +513,14 @@ def stream():
             print(f"Client {request.remote_addr} closed connection")
         except Exception as e:
             print("❌ Error in event_stream:", e)
+
     # Consumer function
     def consumer():
         def event_stream():
             while True:
                 msg = message_queue.get()
                 if msg is None:
-                  break
+                    break
                 yield msg
 
         """
@@ -492,7 +531,15 @@ def stream():
         """
         return Response(event_stream(), mimetype="text/event-stream")
 
-    return Response(event_stream(), mimetype="text/event-stream",headers={"Cache-Control": "no-cache","Connection": "keep-alive","X-Accel-Buffering": "no"})
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
     """ 
     try:
         # Create producer and consumer threads
@@ -529,9 +576,11 @@ def stream():
     return Response(event_stream(), mimetype="text/event-stream")
     """
 
+
 # 4. WebSocket Connection Function
-def start_websocket(access_token_input,tickers):
+def start_websocket(access_token_input, tickers):
     print("📡 Starting WebSocket with access_token...")
+
     def onmessage(message):
         """
         Callback function to handle incoming messages from the FyersDataSocket WebSocket.
@@ -542,7 +591,6 @@ def start_websocket(access_token_input,tickers):
         """
         message_queue.put(f"data: {json.dumps(message)}\n\n")
         print("Response:", message)
-
 
     def onerror(message):
         """
@@ -555,13 +603,11 @@ def start_websocket(access_token_input,tickers):
         """
         print("Error:", message)
 
-
     def onclose(message):
         """
         Callback function to handle WebSocket connection close events.
         """
         print("Connection closed:", message)
-
 
     def onopen():
         """
@@ -572,18 +618,18 @@ def start_websocket(access_token_input,tickers):
         data_type = "SymbolUpdate"
 
         # Subscribe to the specified symbols and data type
-        #symbols = ['NSE:NIFTY2590924900PE', 'NSE:NIFTY50-INDEX', 'NSE:NIFTY2590924900CE', 'NSE:NIFTY2590925000PE',
+        # symbols = ['NSE:NIFTY2590924900PE', 'NSE:NIFTY50-INDEX', 'NSE:NIFTY2590924900CE', 'NSE:NIFTY2590925000PE',
         #           'NSE:NIFTY2590925000CE']
         # Validate: must be a list, non-empty, and all elements non-empty strings
-        if isinstance(tickers, list) and len(tickers) > 0 and all(t.strip() for t in tickers):
+        if (
+            isinstance(tickers, list)
+            and len(tickers) > 0
+            and all(t.strip() for t in tickers)
+        ):
             symbols = tickers
         else:
             # Default fallback
-            symbols = [
-                "BSE:SENSEX-INDEX",
-                "NSE:NIFTY50-INDEX",
-                "NSE:NIFTYBANK-INDEX"
-            ]
+            symbols = ["BSE:SENSEX-INDEX", "NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX"]
         fyers.subscribe(symbols=symbols, data_type=data_type)
 
     # Replace the sample access token with your actual access token obtained from Fyers
@@ -599,19 +645,17 @@ def start_websocket(access_token_input,tickers):
         on_connect=onopen,  # Callback function to subscribe to data upon connection.
         on_close=onclose,  # Callback function to handle WebSocket connection close events.
         on_error=onerror,  # Callback function to handle WebSocket errors.
-        on_message=onmessage  # Callback function to handle incoming messages from the WebSocket.
+        on_message=onmessage,  # Callback function to handle incoming messages from the WebSocket.
     )
-
-
 
     # Keep the socket running to receive real-time data
     fyers.keep_running()
 
-
     # Establish a connection to the Fyers WebSocket
     fyers.connect()
 
-    #yield message_queue.get()
+    # yield message_queue.get()
+
 
 # 5. WebSocket Connection Function
 # Consumer function
@@ -631,23 +675,25 @@ def consumer_old():
     """
     return Response(event_stream(), mimetype="text/event-stream")
 
+
 def run_flask():
     port = int(3000)  # Render sets PORT env variable
     if not port:
-    	port = 8080
-    #cert_file = os.path.join(os.path.dirname(__file__), "ssl.crt/server.crt")
-    #key_file = os.path.join(os.path.dirname(__file__), "ssl.key/server.key")
-    app.run( host="0.0.0.0", port=port,debug=False, use_reloader=False)
+        port = 8080
+    # cert_file = os.path.join(os.path.dirname(__file__), "ssl.crt/server.crt")
+    # key_file = os.path.join(os.path.dirname(__file__), "ssl.key/server.key")
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
 
-#new running main
+# new running main
 def main():
-    #flask_thread = Thread(target=run_flask)
-    #flask_thread.start()
+    # flask_thread = Thread(target=run_flask)
+    # flask_thread.start()
     flask_process = Process(target=run_flask)
     flask_process.start()
 
     print("✅ Flask server started.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
