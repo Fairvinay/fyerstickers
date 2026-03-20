@@ -479,9 +479,7 @@ def stream():
                     # 🔥 STEP 3: Try real queue data first
                     msg = ServerThreadSelfManage.message_queue.get(timeout=45)
                     print(f"msg {msg}")
-                    if msg:
-                        yield f"data: {json.dumps(msg)}\n\n"
-                    elif msg == 'data: "connected"\n\n':
+                    if msg == 'data: "connected"\n\n':
                         symbol = random.choice(symbols)
                         min_range, max_range = ranges[symbol]
                         min_move, max_move = movement[symbol]
@@ -496,6 +494,8 @@ def stream():
                             "type": "if",
                         }
                         yield f"data: {json.dumps(simulated_msg)}\n\n"
+                    elif msg:
+                        yield msg
                     else:
                         yield "data: heartbeat\n\n"
 
