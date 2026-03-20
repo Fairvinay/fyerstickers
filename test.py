@@ -479,7 +479,7 @@ def stream():
                     # 🔥 STEP 3: Try real queue data first
                     msg = ServerThreadSelfManage.message_queue.get(timeout=45)
                     print(f"msg {msg}")
-                    if msg == 'data: "connected"\n\n':
+                    if "connected" in msg:
                         symbol = random.choice(symbols)
                         min_range, max_range = ranges[symbol]
                         min_move, max_move = movement[symbol]
