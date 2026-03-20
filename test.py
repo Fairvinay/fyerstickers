@@ -34,10 +34,10 @@ ssl_context.verify_mode = ssl.CERT_NONE
 
 
 # === Configuration ===S
-client_id = os.environ.get("client_id","V8BNUWJ4WQ-100" )  # "P67RJAS1M6-100"
+client_id = os.environ.get("client_id", "V8BNUWJ4WQ-100")  # "P67RJAS1M6-100"
 # client_id = os.environ.get("client_id", "TRLV2A6GPL-100")
 # "TRLV2A6GPL-100"
-secret_key = os.environ.get("secret_key","KOA61TZLP4" )  # "4LXEKKMFUL"
+secret_key = os.environ.get("secret_key", "KOA61TZLP4")  # "4LXEKKMFUL"
 # secret_key = os.environ.get("secret_key", "V72MPISUJC")
 # "V72MPISUJC"
 # redirec_base_url = os.environ.get("redirec_base_url", "https://192.168.1.3:8888")
@@ -478,9 +478,24 @@ def stream():
                 try:
                     # 🔥 STEP 3: Try real queue data first
                     msg = ServerThreadSelfManage.message_queue.get(timeout=45)
-
+                    print(f"msg {msg}")
                     if msg:
                         yield f"data: {json.dumps(msg)}\n\n"
+                    elif msg == 'data: "connected"\n\n':
+                        symbol = random.choice(symbols)
+                        min_range, max_range = ranges[symbol]
+                        min_move, max_move = movement[symbol]
+                        direction = random.choice([-1, 1])
+                        step = random.uniform(min_move, max_move)
+                        prices[symbol] += direction + step
+                        # Clamp
+                        prices[symbol] = max(min_range, min(max_range, prices[symbol]))
+                        simulated_msg = {
+                            "ltp": round(prices[symbol], 2),
+                            "symbol": symbol,
+                            "type": "if",
+                        }
+                        yield f"data: {json.dumps(simulated_msg)}\n\n"
                     else:
                         yield "data: heartbeat\n\n"
 
