@@ -26,18 +26,18 @@ ssl_context.verify_mode = ssl.CERT_NONE
 
 
 # === Configuration ===S
-client_id = os.environ.get("client_id", "V8BNUWJ4WQ-100")
+client_id = os.environ.get("client_id", "P67RJAS1M6-100") #"V8BNUWJ4WQ-100"
 #client_id = os.environ.get("client_id", "TRLV2A6GPL-100")
 # "TRLV2A6GPL-100"
-secret_key = os.environ.get("secret_key", "KOA61TZLP4")
+secret_key = os.environ.get("secret_key", "4LXEKKMFUL" )#"KOA61TZLP4"
 #secret_key = os.environ.get("secret_key", "V72MPISUJC")
 # "V72MPISUJC"
 #redirec_base_url = os.environ.get("redirec_base_url", "https://192.168.1.3:8888")
-redirec_base_url = os.environ.get("redirec_base_url", "https://successrate.netlify.app")
+redirec_base_url = os.environ.get("redirec_base_url","https://fyersbook.netlify.app" ) #"https://successrate.netlify.app"
 #redirect_uri = "https://192.168.1.4:8888/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
 redirect_uri = redirec_base_url.rstrip("/") +"/.netlify/functions/netlifystockfyersbridge/api/fyersauthcodeverify"
 # ===== CONFIG =====
-API_URL = "https://successrate.netlify.app/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
+API_URL = "https://fyersbook.netlify.app/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
 #API_URL = "https://192.168.1.3:8888/.netlify/functions/netlifystockfyersticker/api/fyersgetbsecequote"
 ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
 API_KEY = "CKFRQC4GPZQUB56W"
@@ -154,9 +154,9 @@ async def initialize_prices_async():
         results = await asyncio.gather(*tasks)
 
         return {
-            "BSE:SENSEX-INDEX": results[0] or 75000,
-            "NSE:NIFTY50-INDEX": results[1] or 22500,
-            "NSE:NIFTYBANK-INDEX": results[2] or 48000,
+            "BSE:SENSEX-INDEX": results[0] or 74207.24,
+            "NSE:NIFTY50-INDEX": results[1] or 23002.15,
+            "NSE:NIFTYBANK-INDEX": results[2] or 53451.00,
         }
 
 
