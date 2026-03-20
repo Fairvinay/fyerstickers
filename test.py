@@ -69,6 +69,8 @@ state = "python_test"
 auth_code_received = None
 flask_process = None  # Will store reference to the running Process
 
+_cached_prices = None
+
 # A queue to pass messages from websocket thread to SSE stream
 message_queue = queue.Queue()
 outgoing = asyncio.Queue()
@@ -178,9 +180,17 @@ async def initialize_prices_async():
 
 # ===== INITIALIZE SPOT VALUES =====
 def initialize_prices():
-    import asyncio
+    global _cached_prices
+    if _cached_prices:
+        return _cached_prices
 
-    return asyncio.run(initialize_prices_async())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        _cached_prices = loop.run_until_complete(initialize_prices_async())
+        return _cached_prices
+    finally:
+        loop.close()
 
 
 async def main_socket():
@@ -188,122 +198,6 @@ async def main_socket():
     while True:
         if not threadsocket.is_alive():
             print("starting  asyncio server with fyers acess token ")
-
-
-async def run_server(acctoken, tickers):
-    task = asyncio.create_task(main_socket())
-    server = await asyncio.start_server(handle_client, "localhost", 15555)
-    async with server:
-        try:
-            await server.serve_forever()
-        except asyncio.CancelledError:
-            print("🛑 Server shutting down...")
-            task.cancel()
-            await task
-
-
-async def handle_client(reader, writer, acctoken, tickers):
-    asyncio.create_task(handle_outgoing(writer, acctoken, tickers))
-
-
-async def handle_outgoing(writer, access_token_input, tickers):
-    while True:
-        message = await outgoing.get()
-        packet = json.dumps(message) + "\r\n"
-        print("📡 Starting WebSocket with access_token...")
-
-        def onmessage(message):
-            """
-            Callback function to handle incoming messages from the FyersDataSocket WebSocket.
-            Parameters:
-            message (dict): The received message from the WebSocket.
-            """
-            # return Response(f"data: {json.dumps(message)}\n\n", mimetype="text/event-stream")
-            message_queue.put(f"data: {json.dumps(message)}\n\n")
-            print("Response:", message)
-
-        def onerror(message):
-            """
-            Callback function to handle WebSocket errors.
-            Parameters:
-                message (dict): The error message received from the WebSocket.
-            """
-            message_queue.put(f"data: {json.dumps(message)}\n\n")
-            print("Error:", message)
-            # return Response(f"data: {json.dumps(message)}\n\n", mimetype="text/event-stream")
-
-        def onclose(message):
-            """
-            Callback function to handle WebSocket connection close events.
-            """
-            message_queue.put(f"data: {json.dumps(message)}\n\n")
-            print("Connection closed:", message)
-            # return Response(f"data: {json.dumps(message)}\n\n", mimetype="text/event-stream")
-
-        def onopen():
-            """
-            Callback function to subscribe to data type and symbols upon WebSocket connection.
-            """
-            # Specify the data type and symbols you want to subscribe to
-            data_type = "SymbolUpdate"
-
-            # Subscribe to the specified symbols and data type
-            # symbols = ['NSE:NIFTY2590924900PE', 'NSE:NIFTY50-INDEX', 'NSE:NIFTY2590924900CE', 'NSE:NIFTY2590925000PE',
-            #           'NSE:NIFTY2590925000CE']
-            # Validate: must be a list, non-empty, and all elements non-empty strings
-            if (
-                isinstance(tickers, list)
-                and len(tickers) > 0
-                and all(t.strip() for t in tickers)
-            ):
-                symbols = tickers
-            else:
-                # Default fallback
-                symbols = [
-                    "BSE:SENSEX-INDEX",
-                    "NSE:NIFTY50-INDEX",
-                    "NSE:NIFTYBANK-INDEX",
-                ]
-            fyers.subscribe(symbols=symbols, data_type=data_type)
-            ter = "connected"
-            message_queue.put(f"data: {json.dumps(ter)}\n\n")
-            # return Response(f"data: {json.dumps(ter)}\n\n", mimetype="text/event-stream")
-
-            # Replace the sample access token with your actual access token obtained from Fyers
-            access_token = access_token_input
-
-        # Create a FyersDataSocket instance with the provided parameters
-        fyers = data_ws.FyersDataSocket(
-            access_token=access_token_input,  # Access token in the format "appid:accesstoken"
-            log_path="",  # Path to save logs. Leave empty to auto-create logs in the current directory.
-            litemode=True,  # Lite mode disabled. Set to True if you want a lite response.
-            write_to_file=False,  # Save response in a log file instead of printing it.
-            reconnect=True,  # Enable auto-reconnection to WebSocket on disconnection.
-            on_connect=onopen,  # Callback function to subscribe to data upon connection.
-            on_close=onclose,  # Callback function to handle WebSocket connection close events.
-            on_error=onerror,  # Callback function to handle WebSocket errors.
-            on_message=onmessage,  # Callback function to handle incoming messages from the WebSocket.
-        )
-
-        # Keep the socket running to receive real-time data
-        fyers.keep_running()
-
-        # Establish a connection to the Fyers WebSocket
-        fyers.connect()
-        writer.write(packet.encode("utf-8"))
-        await writer.drain()
-
-
-def start_asyncio_server(acctoken, tickers):
-    acctoken = global_access_token
-    tickers = tickers_global
-    asyncio.run(run_server(acctoken, tickers))
-
-
-# Start background websocket thread
-threadsocket = threading.Thread(
-    target=start_asyncio_server, args=(global_access_token, tickers_global)
-)
 
 
 @app.errorhandler(CustomError)
@@ -429,12 +323,12 @@ def stream():
 
     ACCESS_TOKEN = access_token
     # 🔥 STEP 1: Initialize real SPOT values
-    # prices = initialize_prices()
-    prices = {
-        "BSE:SENSEX-INDEX": 74969.2,
-        "NSE:NIFTY50-INDEX": 23240.6,
-        "NSE:NIFTYBANK-INDEX": 54123.44,
-    }
+    prices = initialize_prices()
+    # prices = {
+    #    "BSE:SENSEX-INDEX": 74969.2,
+    #    "NSE:NIFTY50-INDEX": 23240.6,
+    #    "NSE:NIFTYBANK-INDEX": 54123.44,
+    # }
 
     print("✅ Initial SPOT prices:", prices)
 
@@ -480,6 +374,27 @@ def stream():
                     msg = ServerThreadSelfManage.message_queue.get(timeout=45)
                     print(f"msg {msg}")
                     if "connected" in msg:
+                        prices = initialize_prices()
+                        print("✅ Initial SPOT prices:", prices)
+                        ranges = {
+                            "BSE:SENSEX-INDEX": (
+                                prices["BSE:SENSEX-INDEX"] - 3,
+                                prices["BSE:SENSEX-INDEX"] + 3,
+                            ),
+                            "NSE:NIFTY50-INDEX": (
+                                prices["NSE:NIFTY50-INDEX"] - 1.5,
+                                prices["NSE:NIFTY50-INDEX"] + 1.5,
+                            ),
+                            "NSE:NIFTYBANK-INDEX": (
+                                prices["NSE:NIFTYBANK-INDEX"] - 1.2,
+                                prices["NSE:NIFTYBANK-INDEX"] + 1.2,
+                            ),
+                        }
+                        movement = {
+                            "BSE:SENSEX-INDEX": (3.5, 8.5),
+                            "NSE:NIFTY50-INDEX": (1.5, 2.9),
+                            "NSE:NIFTYBANK-INDEX": (2.0, 3.9),
+                        }
                         symbol = random.choice(symbols)
                         min_range, max_range = ranges[symbol]
                         min_move, max_move = movement[symbol]
